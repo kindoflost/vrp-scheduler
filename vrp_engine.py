@@ -127,7 +127,7 @@ class Params:
     TimeWindowPenalty2    = 1
     TimeWindowPenalty3    = 1
     TimeWindowPenalty4    = 1
-    StartFromLastSolution = True
+    StartFromLastSolution = False
 
 def _parse_params(df):
     p = Params()
