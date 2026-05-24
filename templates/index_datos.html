@@ -422,7 +422,8 @@ const fileNameEl = document.getElementById("fileName");
 const runBtn     = document.getElementById("runBtn");
 const errorBox   = document.getElementById("errorBox");
 
-document.getElementById("chooseBtn").onclick = () => fileInput.click();
+dropZone.onclick = () => fileInput.click();
+document.getElementById("chooseBtn").onclick = (e) => { e.stopPropagation(); fileInput.click(); };
 fileInput.onchange = () => setFile(fileInput.files[0]);
 dropZone.ondragover = e => { e.preventDefault(); dropZone.classList.add("drag"); };
 dropZone.ondragleave = () => dropZone.classList.remove("drag");
