@@ -20,6 +20,11 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/datos")
+def index_datos():
+    return render_template("index_datos.html")
+
+
 @app.route("/run", methods=["POST"])
 def run():
     if "file" not in request.files:
