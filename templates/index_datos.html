@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Route Optimizer — Datos Technologies</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --navy:    #0f1923;
+  --navy2:   #162030;
+  --navy3:   #1e2d40;
+  --navy4:   #243348;
+  --orange:  #e87722;
+  --orange2: #f5902e;
+  --text:    #e8ecf0;
+  --text2:   #a8b4c0;
+  --border:  #243348;
+  --green:   #2ecc71;
+  --red:     #e74c3c;
+  --amber:   #f39c12;
+}
+body {
+  background: var(--navy);
+  color: var(--text);
+  font-family: 'Inter', -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+a { color: var(--orange); text-decoration: none; }
+a:hover { color: var(--orange2); }
+
+/* ── HEADER ── */
+header {
+  background: var(--navy2);
+  border-bottom: 1px solid var(--border);
+  padding: 0 32px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+.logo { display: flex; align-items: center; gap: 14px; }
+.logo img { height: 32px; }
+.logo-divider { width: 1px; height: 22px; background: var(--border); }
+.logo-product { font-size: 13px; font-weight: 600; color: var(--text2); letter-spacing: .05em; text-transform: uppercase; }
+.header-right { display: flex; align-items: center; gap: 16px; }
+.header-link { font-size: 12px; color: var(--text2); letter-spacing: .04em; text-transform: uppercase; font-weight: 500; }
+.header-link:hover { color: var(--text); }
+
+/* ── HERO BAND ── */
+.hero {
+  background: linear-gradient(135deg, var(--navy2) 0%, #0d1c2e 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 36px 32px 32px;
+}
+.hero-inner { max-width: 900px; margin: 0 auto; }
+.hero h1 { font-size: 24px; font-weight: 700; letter-spacing: -.02em; margin-bottom: 6px; }
+.hero h1 span { color: var(--orange); }
+.hero p { color: var(--text2); font-size: 13px; max-width: 580px; }
+.tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.tag { display: inline-flex; align-items: center; gap: 5px; background: var(--navy4); border: 1px solid var(--border); border-radius: 4px; padding: 3px 9px; font-size: 11px; color: var(--text2); font-weight: 500; letter-spacing: .03em; }
+.tag-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--orange); }
+
+/* ── MAIN LAYOUT ── */
+.wrap { max-width: 900px; margin: 0 auto; padding: 32px 32px 80px; }
+
+/* ── CARD ── */
+.card {
+  background: var(--navy2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--navy3);
+}
+.card-step {
+  width: 22px; height: 22px;
+  background: var(--orange);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0;
+}
+.card-title { font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--text2); }
+.card-body { padding: 20px; }
+
+/* ── HOW IT WORKS ── */
+.steps-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.step-item { background: var(--navy3); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+.step-num { font-size: 20px; font-weight: 700; color: var(--orange); line-height: 1; margin-bottom: 6px; }
+.step-desc { font-size: 12px; color: var(--text2); line-height: 1.5; }
+.sheets-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
+.sheet { background: var(--navy3); border: 1px solid var(--border); border-radius: 4px; padding: 3px 10px; font-family: 'Courier New', monospace; font-size: 11px; color: var(--text2); }
+.sheet.required { border-color: var(--orange); color: var(--orange); }
+.sample-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 14px; font-size: 12px; color: var(--text2); border: 1px solid var(--border); border-radius: 5px; padding: 6px 12px; transition: all .15s; }
+.sample-link:hover { border-color: var(--orange); color: var(--orange); }
+
+/* ── UPLOAD ── */
+.drop-zone {
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  padding: 32px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+  position: relative;
+}
+.drop-zone:hover, .drop-zone.drag { border-color: var(--orange); background: #162030; }
+.drop-icon { font-size: 28px; margin-bottom: 10px; }
+.drop-label { font-size: 14px; color: var(--text2); }
+.drop-label strong { color: var(--orange); cursor: pointer; }
+.drop-hint { font-size: 11px; color: #5a6a7a; margin-top: 5px; }
+#fileInput { display: none; }
+#fileName { margin-top: 10px; font-size: 12px; color: var(--orange); min-height: 16px; }
+
+.run-row { display: flex; align-items: center; gap: 16px; margin-top: 16px; }
+.btn-run {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--orange); color: #fff;
+  border: none; border-radius: 6px;
+  padding: 10px 24px; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: background .15s;
+  font-family: inherit; letter-spacing: .02em;
+}
+.btn-run:hover { background: var(--orange2); }
+.btn-run:disabled { background: var(--navy4); color: #5a6a7a; cursor: default; }
+
+/* Spinner */
+.spinner-wrap { display: none; align-items: center; gap: 10px; color: var(--text2); font-size: 12px; }
+.spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--orange); border-radius: 50%; animation: spin .7s linear infinite; flex-shrink: 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Error */
+.error-box {
+  display: none; margin-top: 16px;
+  background: #1e0a0a; border: 1px solid var(--red);
+  border-radius: 6px; padding: 12px 16px;
+  color: #e88; font-size: 13px;
+}
+.error-box::before { content: "⚠ "; }
+
+/* ── RESULTS ── */
+#resultsSection { display: none; }
+
+/* Stats row */
+.kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 20px; }
+.kpi {
+  background: var(--navy3); border: 1px solid var(--border); border-radius: 8px;
+  padding: 14px 16px; text-align: center;
+}
+.kpi-val { font-size: 30px; font-weight: 700; color: var(--orange); line-height: 1; }
+.kpi-lbl { font-size: 11px; color: var(--text2); margin-top: 4px; text-transform: uppercase; letter-spacing: .04em; }
+
+/* Dropped warning */
+.warn-bar {
+  display: none; align-items: flex-start; gap: 10px;
+  background: #1a1200; border: 1px solid var(--amber);
+  border-radius: 6px; padding: 10px 14px;
+  color: var(--amber); font-size: 12px; margin-bottom: 16px;
+}
+.warn-icon { flex-shrink: 0; font-size: 14px; }
+
+/* Map */
+#map {
+  width: 100%; height: 500px;
+  border-radius: 8px; border: 1px solid var(--border);
+  margin-bottom: 20px; display: none;
+}
+
+/* Route selector */
+.vehicle-selector { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.vbtn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: 4px; font-size: 12px; font-weight: 500;
+  cursor: pointer; border: 1px solid var(--border); background: var(--navy3);
+  color: var(--text2); transition: all .15s; font-family: inherit;
+}
+.vbtn:hover { border-color: var(--text2); color: var(--text); }
+.vbtn.active { color: #fff; }
+.vdot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+/* Table */
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th { text-align: left; padding: 8px 10px; color: var(--text2); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid var(--border); white-space: nowrap; }
+td { padding: 8px 10px; border-bottom: 1px solid #1a2535; white-space: nowrap; }
+tr:hover td { background: #16222f; }
+.depot-row td { color: #4a6070; font-style: italic; }
+.chip {
+  display: inline-block; padding: 1px 7px; border-radius: 10px;
+  font-size: 10px; font-weight: 600; letter-spacing: .03em;
+}
+.chip-depot { background: #1e2d40; color: #5a7a90; }
+.chip-stop  { background: #1a2e1a; color: #4a9a5a; }
+
+/* Download */
+.btn-dl {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: transparent; border: 1px solid var(--border);
+  color: var(--text2); border-radius: 5px; padding: 7px 14px;
+  font-size: 12px; cursor: pointer; transition: all .15s;
+  font-family: inherit; margin-top: 14px;
+}
+.btn-dl:hover { border-color: var(--orange); color: var(--orange); }
+
+/* ── FOOTER ── */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 24px 32px;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 12px;
+}
+.footer-logo { display: flex; align-items: center; gap: 10px; }
+.footer-logo img { height: 22px; opacity: .7; }
+.footer-text { font-size: 11px; color: #4a6070; }
+.footer-links { display: flex; gap: 16px; }
+.footer-links a { font-size: 11px; color: #4a6070; }
+.footer-links a:hover { color: var(--text2); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <a href="https://datostechnologies.com">
+      <img src="https://datostechnologies.com/wp-content/uploads/2019/01/Logo-Datos-Technologies-224px.png"
+           alt="Datos Technologies"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+      <span style="display:none;font-size:15px;font-weight:700;color:var(--orange);letter-spacing:.04em">DATOS</span>
+    </a>
+    <div class="logo-divider"></div>
+    <span class="logo-product">Route Optimizer</span>
+  </div>
+  <div class="header-right">
+    <a class="header-link" href="https://datostechnologies.com/products/">Products</a>
+    <a class="header-link" href="https://datostechnologies.com/contact-us/">Contact</a>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-inner">
+    <h1>Vehicle Routing <span>Optimizer</span></h1>
+    <p>Upload your delivery data, solve the routing problem with Google OR-Tools, and get optimized routes in minutes. Time windows, capacity constraints, and warm-start re-optimization included.</p>
+    <div class="tag-row">
+      <span class="tag"><span class="tag-dot"></span> VRP with Time Windows</span>
+      <span class="tag"><span class="tag-dot"></span> Capacity Constraints</span>
+      <span class="tag"><span class="tag-dot"></span> GuidedLocalSearch</span>
+      <span class="tag"><span class="tag-dot"></span> OSRM Road Network</span>
+      <span class="tag"><span class="tag-dot"></span> Warm-Start Re-Optimization</span>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- HOW IT WORKS -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-step">1</div>
+      <span class="card-title">Prepare your data</span>
+    </div>
+    <div class="card-body">
+      <div class="steps-grid">
+        <div class="step-item">
+          <div class="step-num">①</div>
+          <div class="step-desc">Download the sample workbook to see the exact input format.</div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">②</div>
+          <div class="step-desc">Fill in your stops, vehicles, and parameters. Do not rename sheets.</div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">③</div>
+          <div class="step-desc">Upload and run. Travel times are fetched from OSRM and cached automatically.</div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">④</div>
+          <div class="step-desc">Inspect routes on the map, review stop tables, and download the CSV.</div>
+        </div>
+      </div>
+      <div style="margin-top:16px;">
+        <span style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;font-weight:600;">Required sheets</span>
+        <div class="sheets-row" style="margin-top:8px;">
+          <span class="sheet required">locations</span>
+          <span class="sheet required">vehicles</span>
+          <span class="sheet required">parameters</span>
+          <span class="sheet">solution &nbsp;<span style="opacity:.5">optional warm-start</span></span>
+        </div>
+      </div>
+      <a class="sample-link" href="/sample">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M8 2v8m0 0-3-3m3 3 3-3M3 13h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Download sample workbook
+      </a>
+    </div>
+  </div>
+
+  <!-- UPLOAD -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-step">2</div>
+      <span class="card-title">Upload &amp; Run</span>
+    </div>
+    <div class="card-body">
+      <div class="drop-zone" id="dropZone">
+        <div class="drop-icon">📂</div>
+        <div class="drop-label"><strong id="chooseBtn">Browse file</strong> or drag &amp; drop your workbook</div>
+        <div class="drop-hint">.xlsm or .xlsx · max 20 MB</div>
+        <div id="fileName"></div>
+      </div>
+      <input type="file" id="fileInput" accept=".xlsm,.xlsx">
+
+      <div class="run-row">
+        <button class="btn-run" id="runBtn" disabled>
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M3 2.5l10 5.5-10 5.5V2.5z" fill="currentColor"/></svg>
+          Run Optimizer
+        </button>
+        <div class="spinner-wrap" id="spinner">
+          <div class="spinner"></div>
+          <span>Fetching road times &amp; optimizing routes — this may take 2–3 minutes on first run</span>
+        </div>
+      </div>
+      <div class="error-box" id="errorBox"></div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="resultsSection">
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-step">3</div>
+        <span class="card-title">Solution Summary</span>
+      </div>
+      <div class="card-body">
+        <div class="kpi-row" id="kpiRow">
+          <div class="kpi"><div class="kpi-val" id="kpiRoutes">—</div><div class="kpi-lbl">Routes</div></div>
+          <div class="kpi"><div class="kpi-val" id="kpiStops">—</div><div class="kpi-lbl">Stops Served</div></div>
+          <div class="kpi"><div class="kpi-val" id="kpiTime">—</div><div class="kpi-lbl">Total Time (min)</div></div>
+          <div class="kpi"><div class="kpi-val" id="kpiDropped">—</div><div class="kpi-lbl">Dropped</div></div>
+        </div>
+        <div class="warn-bar" id="warnBar">
+          <span class="warn-icon">⚠</span>
+          <span id="warnText"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-step">4</div>
+        <span class="card-title">Route Map</span>
+      </div>
+      <div class="card-body" style="padding:12px;">
+        <div id="map"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-step">5</div>
+        <span class="card-title">Route Detail</span>
+      </div>
+      <div class="card-body">
+        <div class="vehicle-selector" id="vehicleSelector"></div>
+        <div class="tbl-wrap">
+          <div id="routeTable"></div>
+        </div>
+        <button class="btn-dl" id="dlBtn">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M8 2v8m0 0-3-3m3 3 3-3M3 13h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Download CSV
+        </button>
+      </div>
+    </div>
+
+  </div><!-- /resultsSection -->
+
+</div><!-- /wrap -->
+
+<footer>
+  <div class="footer-logo">
+    <img src="https://datostechnologies.com/wp-content/uploads/2019/01/Logo-Datos-Technologies-224px.png" alt="Datos Technologies"
+         onerror="this.style.display='none'">
+    <span class="footer-text">Route Optimizer · Powered by Google OR-Tools &amp; OSRM</span>
+  </div>
+  <div class="footer-links">
+    <a href="https://datostechnologies.com">datostechnologies.com</a>
+    <a href="https://datostechnologies.com/contact-us/">Contact</a>
+    <a href="https://datostechnologies.com/privacy-policy/">Privacy</a>
+  </div>
+</footer>
+
+<script>
+const COLORS = [
+  "#e87722","#2196f3","#4caf50","#9c27b0","#00bcd4",
+  "#f44336","#8bc34a","#ff5722","#3f51b5","#009688",
+  "#ffc107","#e91e63"
+];
+
+// ── File upload ──────────────────────────────────────────────────────────────
+const dropZone   = document.getElementById("dropZone");
+const fileInput  = document.getElementById("fileInput");
+const fileNameEl = document.getElementById("fileName");
+const runBtn     = document.getElementById("runBtn");
+const errorBox   = document.getElementById("errorBox");
+
+document.getElementById("chooseBtn").onclick = () => fileInput.click();
+fileInput.onchange = () => setFile(fileInput.files[0]);
+dropZone.ondragover = e => { e.preventDefault(); dropZone.classList.add("drag"); };
+dropZone.ondragleave = () => dropZone.classList.remove("drag");
+dropZone.ondrop = e => { e.preventDefault(); dropZone.classList.remove("drag"); if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]); };
+
+let selectedFile = null;
+function setFile(f) {
+  selectedFile = f;
+  fileNameEl.textContent = "✓  " + f.name;
+  runBtn.disabled = false;
+  errorBox.style.display = "none";
+}
+
+// ── Run ──────────────────────────────────────────────────────────────────────
+let csvData = "";
+runBtn.onclick = async () => {
+  if (!selectedFile) return;
+  errorBox.style.display = "none";
+  document.getElementById("resultsSection").style.display = "none";
+  document.getElementById("spinner").style.display = "flex";
+  runBtn.disabled = true;
+
+  const fd = new FormData();
+  fd.append("file", selectedFile);
+
+  try {
+    const resp = await fetch("/run", { method: "POST", body: fd });
+    const data = await resp.json();
+    document.getElementById("spinner").style.display = "none";
+    runBtn.disabled = false;
+
+    if (!resp.ok || data.error) { showError(data.error || "Unknown error."); return; }
+    renderResults(data);
+  } catch(e) {
+    document.getElementById("spinner").style.display = "none";
+    runBtn.disabled = false;
+    showError("Network error: " + e.message);
+  }
+};
+
+function showError(msg) {
+  errorBox.textContent = msg;
+  errorBox.style.display = "block";
+}
+
+// ── Results ──────────────────────────────────────────────────────────────────
+let leafletMap = null;
+
+function renderResults(data) {
+  csvData = data.csv;
+  document.getElementById("kpiRoutes").textContent  = data.total_routes;
+  document.getElementById("kpiStops").textContent   = data.total_stops;
+  document.getElementById("kpiTime").textContent    = data.total_time;
+  document.getElementById("kpiDropped").textContent = data.dropped_nodes.length;
+
+  const wb = document.getElementById("warnBar");
+  if (data.dropped_nodes.length > 0) {
+    document.getElementById("warnText").textContent =
+      `${data.dropped_nodes.length} stop(s) could not be served (nodes: ${data.dropped_nodes.join(", ")}). Consider adding vehicles or relaxing constraints.`;
+    wb.style.display = "flex";
+  } else {
+    wb.style.display = "none";
+  }
+
+  document.getElementById("resultsSection").style.display = "block";
+  buildMap(data.routes);
+  buildVehicleSelector(data.routes);
+  showRoute(data.routes, 0);
+  document.getElementById("resultsSection").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function buildMap(routes) {
+  const mapEl = document.getElementById("map");
+  mapEl.style.display = "block";
+  if (leafletMap) { leafletMap.remove(); leafletMap = null; }
+
+  leafletMap = L.map("map", { zoomControl: true });
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+    attribution: '© <a href="https://carto.com">CARTO</a>',
+    maxZoom: 19
+  }).addTo(leafletMap);
+
+  const bounds = [];
+  routes.forEach((route, ri) => {
+    const color = COLORS[ri % COLORS.length];
+    const latlngs = [];
+    route.stops.forEach(stop => {
+      const ll = [stop.lat, stop.lon];
+      latlngs.push(ll);
+      bounds.push(ll);
+
+      const size  = stop.is_depot ? 14 : 9;
+      const icon  = L.divIcon({
+        className: "",
+        html: `<div style="width:${size}px;height:${size}px;border-radius:50%;
+          background:${stop.is_depot ? "#ffffff22" : color};
+          border:2px solid ${stop.is_depot ? "#aaa" : color};
+          box-shadow:0 0 6px ${color}55;"></div>`,
+        iconSize: [size, size], iconAnchor: [size/2, size/2]
+      });
+
+      const popup = stop.is_depot
+        ? `<b style="color:#e87722">Depot</b><br><span style="color:#aaa">Vehicle ${route.vehicle}</span>`
+        : `<b>Stop ${stop.stop}</b> &nbsp;<span style="color:#aaa">Node ${stop.node}</span><br>
+           Arrive <b>${fmtTime(stop.early)}</b> – ${fmtTime(stop.late)}<br>
+           Service <b>${stop.service} min</b>`;
+
+      L.marker(ll, { icon })
+        .bindPopup(popup, { className: "datos-popup" })
+        .addTo(leafletMap);
+    });
+    L.polyline(latlngs, { color, weight: 2, opacity: .8, dashArray: null }).addTo(leafletMap);
+  });
+
+  if (bounds.length) leafletMap.fitBounds(bounds, { padding: [24, 24] });
+}
+
+function buildVehicleSelector(routes) {
+  const sel = document.getElementById("vehicleSelector");
+  sel.innerHTML = "";
+  routes.forEach((r, i) => {
+    const color = COLORS[i % COLORS.length];
+    const btn   = document.createElement("button");
+    btn.className = "vbtn" + (i===0 ? " active" : "");
+    if (i===0) btn.style.borderColor = color;
+    btn.innerHTML = `<span class="vdot" style="background:${color}"></span>V${r.vehicle} &nbsp;<span style="opacity:.6">${r.num_stops} stops · ${r.duration}min</span>`;
+    btn.onclick = () => {
+      document.querySelectorAll(".vbtn").forEach(b => { b.classList.remove("active"); b.style.borderColor = ""; });
+      btn.classList.add("active");
+      btn.style.borderColor = color;
+      showRoute(routes, i);
+    };
+    sel.appendChild(btn);
+  });
+}
+
+function showRoute(routes, ri) {
+  const r   = routes[ri];
+  const col = COLORS[ri % COLORS.length];
+  let html  = `<table>
+    <thead><tr>
+      <th>#</th><th>Type</th><th>Node</th>
+      <th>Arrive</th><th>Window closes</th>
+      <th>Service</th><th>Load</th><th>Lat</th><th>Lon</th>
+    </tr></thead><tbody>`;
+  r.stops.forEach(s => {
+    const cls = s.is_depot ? " class='depot-row'" : "";
+    const chip = s.is_depot
+      ? `<span class="chip chip-depot">Depot</span>`
+      : `<span class="chip chip-stop" style="background:${col}22;color:${col}">Stop</span>`;
+    html += `<tr${cls}>
+      <td>${s.stop}</td>
+      <td>${chip}</td>
+      <td>${s.is_depot ? "—" : s.node}</td>
+      <td>${fmtTime(s.early)}</td>
+      <td>${fmtTime(s.late)}</td>
+      <td>${s.service ? s.service + " min" : "—"}</td>
+      <td>${s.load || "—"}</td>
+      <td>${s.lat}</td>
+      <td>${s.lon}</td>
+    </tr>`;
+  });
+  html += "</tbody></table>";
+  document.getElementById("routeTable").innerHTML = html;
+}
+
+function fmtTime(mins) {
+  const h = String(Math.floor(mins/60)).padStart(2,"0");
+  const m = String(mins%60).padStart(2,"0");
+  return `${h}:${m}`;
+}
+
+document.getElementById("dlBtn").onclick = () => {
+  const a  = Object.assign(document.createElement("a"), {
+    href:     URL.createObjectURL(new Blob([csvData], { type: "text/csv" })),
+    download: "datos_vrp_solution.csv"
+  });
+  a.click();
+};
+</script>
+</body>
+</html>

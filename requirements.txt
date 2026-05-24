@@ -1,0 +1,7 @@
+flask
+gunicorn
+ortools
+pandas
+openpyxl
+requests
+numpy
