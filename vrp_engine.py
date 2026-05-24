@@ -98,8 +98,17 @@ def load_from_excel(file_obj):
     xl = pd.ExcelFile(file_obj)
     out = {}
     for sheet in ["locations", "vehicles", "parameters", "solution"]:
-        out[sheet] = (pd.read_excel(xl, sheet_name=sheet, header=None)
-                      if sheet in xl.sheet_names else pd.DataFrame())
+        if sheet not in xl.sheet_names:
+            out[sheet] = pd.DataFrame()
+            continue
+        df = pd.read_excel(xl, sheet_name=sheet, header=None)
+        # Drop header row if first cell is a string (e.g. "lat", "capacity", etc.)
+        if not df.empty and isinstance(df.iloc[0, 0], str):
+            try:
+                float(df.iloc[0, 0])
+            except (ValueError, TypeError):
+                df = df.iloc[1:].reset_index(drop=True)
+        out[sheet] = df
     return out
 
 def load_from_csvs(locations, vehicles, parameters, solution=None):
