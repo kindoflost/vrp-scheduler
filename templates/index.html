@@ -146,12 +146,12 @@
   <section>
     <h2>2 Upload your workbook</h2>
     <div class="upload-box" id="dropZone">
-      <div class="upload-icon">📂</div>
-      <div class="upload-label"><span id="chooseBtn">Choose file</span> or drag &amp; drop</div>
-      <div class="upload-hint">.xlsm · .xlsx</div>
-      <div id="fileName"></div>
+      <div class="upload-icon" style="pointer-events:none">📂</div>
+      <div class="upload-label" style="pointer-events:none"><span id="chooseBtn" style="pointer-events:auto">Choose file</span> or drag &amp; drop</div>
+      <div class="upload-hint" style="pointer-events:none">.xlsm · .xlsx</div>
+      <div id="fileName" style="pointer-events:none"></div>
+      <input type="file" id="fileInput" accept=".xlsm,.xlsx" style="display:none">
     </div>
-    <input type="file" id="fileInput" accept=".xlsm,.xlsx">
     <br>
     <button class="btn" id="runBtn" disabled>▶ Run Optimizer</button>
     <div class="spinner-wrap" id="spinner">
@@ -205,7 +205,8 @@ const fileNameEl= document.getElementById("fileName");
 const runBtn    = document.getElementById("runBtn");
 const errorBox  = document.getElementById("errorBox");
 
-document.getElementById("chooseBtn").onclick = () => fileInput.click();
+dropZone.onclick = () => fileInput.click();
+document.getElementById("chooseBtn").onclick = (e) => { e.stopPropagation(); fileInput.click(); };
 fileInput.onchange = () => setFile(fileInput.files[0]);
 
 dropZone.ondragover = e => { e.preventDefault(); dropZone.classList.add("drag"); };
