@@ -4,10 +4,19 @@ VRP Web App — Flask wrapper around vrp_engine.py
 import io, traceback
 from pathlib import Path
 from flask import Flask, request, render_template, jsonify, send_file
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from vrp_engine import run_vrp, load_from_excel
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024   # 20 MB
+
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=[],          # no global limit — only apply where we say
+    storage_uri="memory://",
+)
 
 ALLOWED = {"xlsm", "xlsx"}
 
@@ -26,6 +35,7 @@ def index_datos():
 
 
 @app.route("/run", methods=["POST"])
+@limiter.limit("10 per minute")
 def run():
     if "file" not in request.files:
         return jsonify({"error": "No file uploaded."}), 400
