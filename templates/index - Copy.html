@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VRP Scheduler — Kind-of-Lost OR Tools</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:      #0d0d0d;
+    --surface: #1a1a1a;
+    --border:  #2e2e2e;
+    --accent:  #21759b;
+    --accent2: #2e9fc7;
+    --text:    #e8e8e8;
+    --muted:   #888;
+    --green:   #3a9a5c;
+    --orange:  #c97a2a;
+    --red:     #c94040;
+  }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 15px; line-height: 1.6; }
+  a { color: var(--accent2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* Header */
+  header { background: #111; border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; gap: 12px; }
+  header img { width: 36px; height: 36px; border-radius: 4px; }
+  header .site { font-weight: 600; font-size: 16px; color: var(--text); }
+  header .sep { color: var(--muted); }
+  header .page { color: var(--muted); font-size: 15px; }
+
+  /* Layout */
+  main { max-width: 900px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { font-size: 26px; font-weight: 700; margin-bottom: 8px; }
+  .subtitle { color: var(--muted); margin-bottom: 36px; font-size: 14px; }
+  .badge { display: inline-block; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 2px 8px; font-size: 12px; color: var(--muted); margin-right: 6px; }
+
+  /* Section */
+  section { margin-bottom: 40px; }
+  h2 { font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 16px; }
+
+  /* How-it-works */
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: 16px; margin-bottom: 8px; }
+  .step { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+  .step-num { font-size: 22px; font-weight: 700; color: var(--accent); margin-bottom: 6px; }
+  .step-text { font-size: 13px; color: var(--muted); }
+  .sheet-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .sheet-tag { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 3px 10px; font-size: 12px; color: var(--muted); font-family: monospace; }
+
+  /* Upload */
+  .upload-box { border: 2px dashed var(--border); border-radius: 10px; padding: 36px; text-align: center; cursor: pointer; transition: border-color .2s, background .2s; }
+  .upload-box:hover, .upload-box.drag { border-color: var(--accent); background: #111f28; }
+  .upload-icon { font-size: 32px; margin-bottom: 10px; }
+  .upload-label { font-size: 15px; color: var(--text); }
+  .upload-label span { color: var(--accent2); cursor: pointer; }
+  .upload-hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  #fileInput { display: none; }
+  #fileName { margin-top: 10px; font-size: 13px; color: var(--accent2); min-height: 18px; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; background: var(--accent); color: #fff; border: none; border-radius: 6px; padding: 10px 22px; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 16px; transition: background .2s; }
+  .btn:hover { background: var(--accent2); }
+  .btn:disabled { background: var(--border); color: var(--muted); cursor: default; }
+
+  /* Spinner */
+  .spinner-wrap { display: none; align-items: center; gap: 12px; margin-top: 20px; color: var(--muted); font-size: 14px; }
+  .spinner { width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Error */
+  .error-box { background: #1e0a0a; border: 1px solid var(--red); border-radius: 8px; padding: 14px 18px; margin-top: 20px; color: #e57878; font-size: 14px; display: none; }
+
+  /* Stats */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px,1fr)); gap: 12px; margin-bottom: 24px; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; text-align: center; }
+  .stat-val { font-size: 28px; font-weight: 700; color: var(--accent2); }
+  .stat-lbl { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .dropped-warning { background: #1e1200; border: 1px solid var(--orange); border-radius: 6px; padding: 10px 14px; font-size: 13px; color: var(--orange); margin-bottom: 16px; display: none; }
+
+  /* Map */
+  #map { width: 100%; height: 480px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 24px; display: none; }
+
+  /* Route table */
+  .route-tabs { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+  .rtab { padding: 5px 14px; border-radius: 20px; font-size: 13px; cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--muted); transition: all .15s; }
+  .rtab.active { border-color: var(--accent); color: var(--text); background: #111f28; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 8px 10px; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  td { padding: 8px 10px; border-bottom: 1px solid #1e1e1e; }
+  tr:hover td { background: #141414; }
+  .depot-row td { color: var(--muted); font-style: italic; }
+
+  /* Download */
+  .dl-btn { display: inline-flex; align-items: center; gap: 6px; background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 7px 16px; font-size: 13px; cursor: pointer; transition: all .15s; margin-top: 12px; }
+  .dl-btn:hover { border-color: var(--accent); color: var(--text); }
+
+  /* Footer */
+  footer { text-align: center; padding: 32px 24px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; margin-top: 60px; }
+  footer a { color: var(--muted); }
+
+  #resultsSection { display: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <a href="https://kindoflost.com">
+    <img src="https://i0.wp.com/kindoflost.com/wp-content/uploads/2026/05/cropped-kind_of_lost-80x80-1.png?fit=80%2C80&ssl=1" alt="Kind-of-Lost">
+  </a>
+  <span class="site"><a href="https://kindoflost.com">Kind-of-Lost</a></span>
+  <span class="sep">·</span>
+  <span class="page">OR Tools</span>
+</header>
+
+<main>
+  <h1>VRP Scheduler</h1>
+  <p class="subtitle">
+    <span class="badge">VRP-TW</span>
+    <span class="badge">Capacity</span>
+    <span class="badge">Google OR-Tools</span>
+    <span class="badge">GuidedLocalSearch</span>
+    Upload your workbook, run the optimizer, visualize routes on the map.
+  </p>
+
+  <!-- How it works -->
+  <section>
+    <h2>1 How it works</h2>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div class="step-text">Download the sample workbook — it shows the exact format for each sheet.</div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-text">Fill in your own data. Do not rename or delete any sheets.</div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-text">Upload and click Run. Travel times are fetched from OSRM and cached.</div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-text">View routes on the map, inspect the stop table, download the CSV.</div></div>
+    </div>
+    <div class="sheet-list">
+      <span class="sheet-tag">locations</span>
+      <span class="sheet-tag">vehicles</span>
+      <span class="sheet-tag">parameters</span>
+      <span class="sheet-tag">solution (optional warm-start)</span>
+    </div>
+    <p style="margin-top:14px;font-size:13px;color:var(--muted)">
+      <a href="/sample">⇣ Download sample workbook</a>
+    </p>
+  </section>
+
+  <!-- Upload -->
+  <section>
+    <h2>2 Upload your workbook</h2>
+    <div class="upload-box" id="dropZone">
+      <div class="upload-icon" style="pointer-events:none">📂</div>
+      <div class="upload-label" style="pointer-events:none"><span id="chooseBtn" style="pointer-events:auto">Choose file</span> or drag &amp; drop</div>
+      <div class="upload-hint" style="pointer-events:none">.xlsm · .xlsx</div>
+      <div id="fileName" style="pointer-events:none"></div>
+      <input type="file" id="fileInput" accept=".xlsm,.xlsx" style="display:none">
+    </div>
+    <br>
+    <button class="btn" id="runBtn" disabled>▶ Run Optimizer</button>
+    <div class="spinner-wrap" id="spinner">
+      <div class="spinner"></div>
+      <span id="spinnerMsg">Fetching travel times and optimizing routes… this may take 1–3 minutes</span>
+    </div>
+    <div class="error-box" id="errorBox"></div>
+  </section>
+
+  <!-- Results -->
+  <section id="resultsSection">
+    <h2>3 Results</h2>
+
+    <div class="stats" id="statsRow">
+      <div class="stat"><div class="stat-val" id="statRoutes">—</div><div class="stat-lbl">Routes</div></div>
+      <div class="stat"><div class="stat-val" id="statStops">—</div><div class="stat-lbl">Stops served</div></div>
+      <div class="stat"><div class="stat-val" id="statTime">—</div><div class="stat-lbl">Total time (min)</div></div>
+      <div class="stat"><div class="stat-val" id="statDropped">—</div><div class="stat-lbl">Dropped</div></div>
+    </div>
+
+    <div class="dropped-warning" id="droppedWarn"></div>
+
+    <div id="map"></div>
+
+    <div class="route-tabs" id="routeTabs"></div>
+    <div id="routeTable"></div>
+
+    <button class="dl-btn" id="dlBtn">⇣ Download CSV</button>
+  </section>
+</main>
+
+<footer>
+  <a href="https://kindoflost.com">Kind-of-Lost</a> · VRP Scheduler ·
+  Built with <a href="https://developers.google.com/optimization/routing/vrp">Google OR-Tools</a>,
+  <a href="https://project-osrm.org/">OSRM</a>,
+  <a href="https://flask.palletsprojects.com/">Flask</a>
+</footer>
+
+<script>
+// ── Palette for routes ──────────────────────────────────────────────────────
+const COLORS = [
+  "#e05252","#52a8e0","#52e087","#e0c252","#a852e0",
+  "#52e0d4","#e07852","#8fe052","#e052b8","#5268e0",
+  "#e0e052","#52e0a8"
+];
+
+// ── File upload ─────────────────────────────────────────────────────────────
+const dropZone  = document.getElementById("dropZone");
+const fileInput = document.getElementById("fileInput");
+const fileNameEl= document.getElementById("fileName");
+const runBtn    = document.getElementById("runBtn");
+const errorBox  = document.getElementById("errorBox");
+
+dropZone.onclick = () => fileInput.click();
+document.getElementById("chooseBtn").onclick = (e) => { e.stopPropagation(); fileInput.click(); };
+fileInput.onchange = () => setFile(fileInput.files[0]);
+
+dropZone.ondragover = e => { e.preventDefault(); dropZone.classList.add("drag"); };
+dropZone.ondragleave = () => dropZone.classList.remove("drag");
+dropZone.ondrop = e => {
+  e.preventDefault();
+  dropZone.classList.remove("drag");
+  if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+};
+
+let selectedFile = null;
+function setFile(f) {
+  selectedFile = f;
+  fileNameEl.textContent = f.name;
+  runBtn.disabled = false;
+  errorBox.style.display = "none";
+}
+
+// ── Run ─────────────────────────────────────────────────────────────────────
+let csvData = "";
+runBtn.onclick = async () => {
+  if (!selectedFile) return;
+  errorBox.style.display = "none";
+  document.getElementById("resultsSection").style.display = "none";
+  document.getElementById("spinner").style.display = "flex";
+  runBtn.disabled = true;
+
+  const fd = new FormData();
+  fd.append("file", selectedFile);
+
+  try {
+    const resp = await fetch("/run", { method: "POST", body: fd });
+    const data = await resp.json();
+    document.getElementById("spinner").style.display = "none";
+    runBtn.disabled = false;
+
+    if (!resp.ok || data.error) {
+      showError(data.error || "Unknown error.");
+      return;
+    }
+    renderResults(data);
+  } catch (e) {
+    document.getElementById("spinner").style.display = "none";
+    runBtn.disabled = false;
+    showError("Network error: " + e.message);
+  }
+};
+
+function showError(msg) {
+  errorBox.textContent = "Error: " + msg;
+  errorBox.style.display = "block";
+}
+
+// ── Render results ──────────────────────────────────────────────────────────
+let leafletMap = null;
+
+function renderResults(data) {
+  csvData = data.csv;
+
+  document.getElementById("statRoutes").textContent  = data.total_routes;
+  document.getElementById("statStops").textContent   = data.total_stops;
+  document.getElementById("statTime").textContent    = data.total_time;
+  document.getElementById("statDropped").textContent = data.dropped_nodes.length;
+
+  const dw = document.getElementById("droppedWarn");
+  if (data.dropped_nodes.length > 0) {
+    dw.textContent = `⚠ ${data.dropped_nodes.length} stop(s) could not be served: nodes ${data.dropped_nodes.join(", ")}. Consider adding more vehicles or relaxing time windows.`;
+    dw.style.display = "block";
+  } else {
+    dw.style.display = "none";
+  }
+
+  document.getElementById("resultsSection").style.display = "block";
+  buildMap(data.routes);
+  buildTabs(data.routes);
+  showRoute(data.routes, 0);
+}
+
+function buildMap(routes) {
+  const mapEl = document.getElementById("map");
+  mapEl.style.display = "block";
+
+  if (leafletMap) { leafletMap.remove(); leafletMap = null; }
+
+  leafletMap = L.map("map");
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: "© OpenStreetMap contributors", maxZoom: 18
+  }).addTo(leafletMap);
+
+  const bounds = [];
+  routes.forEach((route, ri) => {
+    const color = COLORS[ri % COLORS.length];
+    const latlngs = [];
+    route.stops.forEach(stop => {
+      const ll = [stop.lat, stop.lon];
+      latlngs.push(ll);
+      bounds.push(ll);
+
+      const isDepot = stop.is_depot;
+      const icon = L.divIcon({
+        className: "",
+        html: `<div style="
+          background:${isDepot ? "#333" : color};
+          border:2px solid ${isDepot ? "#888" : "#fff"};
+          border-radius:50%;width:${isDepot?14:10}px;height:${isDepot?14:10}px;
+          box-shadow:0 0 4px rgba(0,0,0,.5)">
+        </div>`,
+        iconSize: [isDepot?14:10, isDepot?14:10],
+        iconAnchor: [isDepot?7:5, isDepot?7:5],
+      });
+
+      const marker = L.marker(ll, {icon}).addTo(leafletMap);
+      const label = isDepot
+        ? `<b>Depot</b><br>Vehicle ${route.vehicle}`
+        : `<b>Stop ${stop.stop}</b> · Node ${stop.node}<br>Arrive: ${fmtTime(stop.early)} – ${fmtTime(stop.late)}<br>Service: ${stop.service} min`;
+      marker.bindPopup(label);
+    });
+
+    // Draw route line
+    L.polyline(latlngs, {color, weight: 2.5, opacity: 0.75}).addTo(leafletMap);
+  });
+
+  if (bounds.length) leafletMap.fitBounds(bounds, {padding: [30,30]});
+}
+
+function buildTabs(routes) {
+  const tabs = document.getElementById("routeTabs");
+  tabs.innerHTML = "";
+  routes.forEach((r, i) => {
+    const btn = document.createElement("button");
+    btn.className = "rtab" + (i===0?" active":"");
+    btn.style.borderLeftColor = COLORS[i % COLORS.length];
+    btn.textContent = `Vehicle ${r.vehicle}  (${r.num_stops} stops)`;
+    btn.onclick = () => {
+      document.querySelectorAll(".rtab").forEach(b=>b.classList.remove("active"));
+      btn.classList.add("active");
+      showRoute(routes, i);
+    };
+    tabs.appendChild(btn);
+  });
+}
+
+function showRoute(routes, ri) {
+  const r = routes[ri];
+  const el = document.getElementById("routeTable");
+  let html = `<table>
+    <thead><tr>
+      <th>#</th><th>Node</th><th>Arrive</th><th>Latest</th>
+      <th>Service</th><th>Load</th><th>Lat</th><th>Lon</th>
+    </tr></thead><tbody>`;
+  r.stops.forEach(s => {
+    const cls = s.is_depot ? " class='depot-row'" : "";
+    html += `<tr${cls}>
+      <td>${s.stop}</td>
+      <td>${s.is_depot ? "Depot" : s.node}</td>
+      <td>${fmtTime(s.early)}</td>
+      <td>${fmtTime(s.late)}</td>
+      <td>${s.service} min</td>
+      <td>${s.load}</td>
+      <td>${s.lat}</td>
+      <td>${s.lon}</td>
+    </tr>`;
+  });
+  html += "</tbody></table>";
+  el.innerHTML = html;
+}
+
+function fmtTime(mins) {
+  const h = Math.floor(mins / 60).toString().padStart(2,"0");
+  const m = (mins % 60).toString().padStart(2,"0");
+  return `${h}:${m}`;
+}
+
+// ── Download CSV ─────────────────────────────────────────────────────────────
+document.getElementById("dlBtn").onclick = () => {
+  const blob = new Blob([csvData], {type:"text/csv"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "vrp_solution.csv";
+  a.click();
+};
+</script>
+</body>
+</html>
