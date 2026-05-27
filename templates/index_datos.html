@@ -568,10 +568,34 @@ function buildVehicleSelector(routes) {
   });
 }
 
+function buildGoogleMapsUrl(stops) {
+  const depot = stops.find(s => s.is_depot);
+  const waypoints = stops.filter(s => !s.is_depot);
+  if (!depot || waypoints.length === 0) return null;
+  const origin = `${depot.lat},${depot.lon}`;
+  const waypointStr = waypoints.map(s => `${s.lat},${s.lon}`).join("|");
+  return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${origin}&waypoints=${waypointStr}&travelmode=driving`;
+}
+
 function showRoute(routes, ri) {
   const r   = routes[ri];
   const col = COLORS[ri % COLORS.length];
-  let html  = `<table>
+
+  const gmUrl = buildGoogleMapsUrl(r.stops);
+  const btnHtml = gmUrl
+    ? `<a href="${gmUrl}" target="_blank" rel="noopener" style="
+        display:inline-flex;align-items:center;gap:6px;
+        margin-bottom:10px;padding:7px 14px;
+        background:#4285F4;color:#fff;font-size:13px;font-weight:600;
+        border-radius:5px;text-decoration:none;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+        </svg>
+        Open in Google Maps
+      </a>`
+    : "";
+
+  let html  = btnHtml + `<table>
     <thead><tr>
       <th>#</th><th>Type</th><th>Node</th>
       <th>Arrive</th><th>Window closes</th>
