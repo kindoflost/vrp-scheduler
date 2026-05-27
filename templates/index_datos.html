@@ -439,18 +439,28 @@ function setFile(f) {
 
 // ── Run ──────────────────────────────────────────────────────────────────────
 let csvData = "";
+let currentController = null;
+
 runBtn.onclick = async () => {
   if (!selectedFile) return;
+
+  // Cancel any in-flight request from a previous run
+  if (currentController) { currentController.abort(); }
+  currentController = new AbortController();
+
   errorBox.style.display = "none";
   document.getElementById("resultsSection").style.display = "none";
   document.getElementById("spinner").style.display = "flex";
   runBtn.disabled = true;
 
+  // Destroy the old map so Leaflet doesn't fight with the new one
+  if (leafletMap) { leafletMap.remove(); leafletMap = null; }
+
   const fd = new FormData();
   fd.append("file", selectedFile);
 
   try {
-    const resp = await fetch("/run", { method: "POST", body: fd });
+    const resp = await fetch("/run", { method: "POST", body: fd, signal: currentController.signal });
     const data = await resp.json();
     document.getElementById("spinner").style.display = "none";
     runBtn.disabled = false;
@@ -460,7 +470,7 @@ runBtn.onclick = async () => {
   } catch(e) {
     document.getElementById("spinner").style.display = "none";
     runBtn.disabled = false;
-    showError("Network error: " + e.message);
+    if (e.name !== "AbortError") showError("Network error: " + e.message);
   }
 };
 
@@ -498,8 +508,6 @@ function renderResults(data) {
 function buildMap(routes) {
   const mapEl = document.getElementById("map");
   mapEl.style.display = "block";
-  if (leafletMap) { leafletMap.remove(); leafletMap = null; }
-
   leafletMap = L.map("map", { zoomControl: true });
   L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
     attribution: '© <a href="https://carto.com">CARTO</a>',
